@@ -1,0 +1,1506 @@
+diff --git a/.claude-plugin/agents/ticket_readiness.md b/.claude-plugin/agents/ticket_readiness.md
+new file mode 100644
+index 0000000..73bcf79
+--- /dev/null
++++ b/.claude-plugin/agents/ticket_readiness.md
+@@ -0,0 +1,17 @@
++---
++name: egm-ticket-readiness
++description: Ticket readiness reviewer.
++license: Apache-2.0
++tools: [Read, Grep, Glob]
++model: inherit
++color: yellow
++omitClaudeMd: true
++---
++
++Read `${CLAUDE_PLUGIN_ROOT}/agents/ticket_readiness.md` before reviewing.
++Follow that canonical persona's instructions. This adapter defines your Claude
++tool and context restrictions. Resolve bundled standards against
++`${CLAUDE_PLUGIN_ROOT}`. Remain read-only and use only the task and explicitly
++supplied review context.
++Before returning findings, read the target and every supplied standard. If a
++required file cannot be read, report an incomplete review instead of a verdict.
+diff --git a/.claude-plugin/plugin.json b/.claude-plugin/plugin.json
+index 1f6d6d9..ca2e40a 100644
+--- a/.claude-plugin/plugin.json
++++ b/.claude-plugin/plugin.json
+@@ -25,6 +25,7 @@
+     "./.claude-plugin/agents/structural.md",
+     "./.claude-plugin/agents/style.md",
+     "./.claude-plugin/agents/synthesizer.md",
++    "./.claude-plugin/agents/ticket_readiness.md",
+     "./.claude-plugin/agents/zoom_out.md"
+   ]
+ }
+diff --git a/.cursor-plugin/agents/ticket_readiness.md b/.cursor-plugin/agents/ticket_readiness.md
+new file mode 100644
+index 0000000..b9e5e29
+--- /dev/null
++++ b/.cursor-plugin/agents/ticket_readiness.md
+@@ -0,0 +1,18 @@
++---
++name: egm-ticket-readiness
++description: Ticket readiness reviewer.
++model: inherit
++readonly: true
++permissionMode: readonly
++is_background: false
++---
++
++Require an absolute EGM_ROOT in the task. Read EGM_ROOT/agents/ticket_readiness.md
++first and follow that canonical persona. EGM_ROOT is a task value, not an
++environment variable. Resolve resources/ against that root.
++Read the absolute target and every supplied standard before returning findings.
++Use only the task and explicitly supplied Goldfish context.
++Do not edit files, run shell commands, access MCP services, or delegate.
++Return findings to the parent; the parent writes reports.
++If required paths or reads are unavailable, return an incomplete review,
++not a passing verdict.
+diff --git a/.windsurf/rules/egm.md b/.windsurf/rules/egm.md
+index 3664f0b..a80a9ff 100644
+--- a/.windsurf/rules/egm.md
++++ b/.windsurf/rules/egm.md
+@@ -7,6 +7,6 @@ description: Route EGM requests to shared skills. Require fresh-context isolatio
+ 
+ 1. Require a workspace-root checkout. Resolve all EGM workflows from `skills/<skill-name>/SKILL.md`, `agents/*.md`, and `resources/document_standards/*.md` at the repository root without copied skill text.
+ 2. Preserve all human approval pauses and file-output boundaries from each `SKILL.md`.
+-3. Run `egm-draft`, `egm-resolve`, and `egm-drift-report` in the active session; in `egm-bootstrap`, run scout steps inline when no subagent tool exists.
++3. Run `egm-draft`, `egm-resolve`, `egm-drift-report`, and `egm-tickets` (except its Step 6 review) in the active session; in `egm-bootstrap`, run scout steps inline when no subagent tool exists.
+ 4. Run Goldfish swarm workflows (`egm-brainstorm`, `egm-review`, `egm-review-loop`) only with fresh-context, read-only subagents that receive zero parent history. If the host agent cannot create these subagents, stop immediately, report that a same-context review is not a Goldfish review, and invoke no file-write or shell tools.
+ 5. Launch every Goldfish reviewer with the host's read-only subagent profile (`subagent_explore` in the Devin CLI). Never give a reviewer a write-capable profile and never resume a reviewer. Reviewers return findings as text. Only the parent writes files: the outputs that `SKILL.md` assigns to it, or a file the user asks for, after the user approves the write.
+diff --git a/.windsurf/workflows/egm-tickets.md b/.windsurf/workflows/egm-tickets.md
+new file mode 100644
+index 0000000..8b02430
+--- /dev/null
++++ b/.windsurf/workflows/egm-tickets.md
+@@ -0,0 +1,9 @@
++---
++description: Route to canonical skills/egm-tickets/SKILL.md without copied skill text.
++---
++
++1. Read `skills/egm-tickets/SKILL.md` from the EGM package root.
++2. Execute the skill.
++3. Resolve `agents/*.md` and `resources/document_standards/*.md` relative to the package root.
++4. Preserve all required human approval gates and output boundaries from `skills/egm-tickets/SKILL.md`.
++5. Run the Step 6 Goldfish review under the `egm-review-loop` isolation rules in `.windsurf/rules/egm.md`.
+diff --git a/README.md b/README.md
+index d570bc7..7c382f7 100644
+--- a/README.md
++++ b/README.md
+@@ -103,7 +103,15 @@ The agent turns the brief into `design_draft.md`, pausing after each section for
+ 
+ Use the draft path returned by the agent.
+ 
+-Fresh reviewers check the design, its clarity, its fit with the code, and its implementation plan. Choose which findings to address. When you approve the design, ask your coding agent to implement it.
++Fresh reviewers check the design, its clarity, its fit with the code, and its implementation plan. Choose which findings to address. When you approve the design, split it into tickets or ask your coding agent to implement it.
++
++<img src="skills/egm-tickets/assets/icon.svg" width="20" height="20" align="top" alt=""> **Split into tickets**
++
++```text
++/egm-tickets docs/designs/webhooks.md
++```
++
++The agent splits the Detailed Implementation Plan into ordered tickets, checks that every planned file is covered, and has a fresh reviewer read each ticket with only the design. Tickets are written as Markdown files under `docs/tickets/<feature>/`.
+ 
+ See the [workflow guide](docs/getting_started.md) for the full process, including saving approved specifications under `docs/designs/`.
+ 
+@@ -133,6 +141,7 @@ You can use each skill when you need it. You do not have to follow the full sequ
+     <tr valign="top"><td width="160" valign="top"><img src="skills/egm-bootstrap/assets/icon.svg" width="20" height="20" alt="" align="top">&nbsp;<a href="skills/egm-bootstrap/SKILL.md">Bootstrap</a></td><td>Create or update documentation for an existing codebase.</td></tr>
+     <tr valign="top"><td width="160" valign="top"><img src="skills/egm-review/assets/icon.svg" width="20" height="20" alt="" align="top">&nbsp;<a href="skills/egm-review/SKILL.md">Review</a></td><td>Review a design with fresh agents across five stages.</td></tr>
+     <tr valign="top"><td width="160" valign="top"><img src="skills/egm-review-loop/assets/icon.svg" width="20" height="20" alt="" align="top">&nbsp;<a href="skills/egm-review-loop/SKILL.md">Review&nbsp;loop</a></td><td>Run a configured group of reviewers for a specific review task.</td></tr>
++    <tr valign="top"><td width="160" valign="top"><img src="skills/egm-tickets/assets/icon.svg" width="20" height="20" alt="" align="top">&nbsp;<a href="skills/egm-tickets/SKILL.md">Tickets</a></td><td>Split an approved design into ordered, self-contained tickets.</td></tr>
+     <tr valign="top"><td width="160" valign="top"><img src="skills/egm-drift-report/assets/icon.svg" width="20" height="20" alt="" align="top">&nbsp;<a href="skills/egm-drift-report/SKILL.md">Drift&nbsp;report</a></td><td>Compare checked-in documents with the current source code.</td></tr>
+   </tbody>
+ </table>
+diff --git a/adapters/opencode/install.py b/adapters/opencode/install.py
+index 906ddbf..6eeb96e 100644
+--- a/adapters/opencode/install.py
++++ b/adapters/opencode/install.py
+@@ -14,7 +14,8 @@ ROOT = Path(__file__).resolve().parents[2]
+ HOST_VERSION = "1.18.29"
+ REVIEWERS = (
+     "codebase_details", "comprehension", "design_critic",
+-    "implementation_readiness", "inventive_catalyst", "structural", "style", "zoom_out",
++    "implementation_readiness", "inventive_catalyst", "structural", "style",
++    "ticket_readiness", "zoom_out",
+ )
+ 
+ 
+diff --git a/agents/ticket_readiness.md b/agents/ticket_readiness.md
+new file mode 100644
+index 0000000..8bd971e
+--- /dev/null
++++ b/agents/ticket_readiness.md
+@@ -0,0 +1,58 @@
++---
++name: egm-ticket-readiness
++description: Implementer persona verifying that each ticket can be finished alone with only the ticket and its design document, and that the ticket set covers the design in a buildable order.
++license: Apache-2.0
++---
++
++# Core Mandates (Universal Goldfish Context)
++
++You are a specialized Goldfish subagent operating within the Elephant-Goldfish Model. You have been delegated a specific task by the root agent (the Elephant).
++
++1. **Strict Read-Only Protocol**: You are a strictly read-only agent. You have NO tools to modify the workspace, write files, or compile code. Do not attempt to fix or refactor any code.
++2. **Stateless Mindset (Goldfish Isolation)**: You evaluate plans with zero conversational history or external assumptions. You must read the document as a naive team member or fresh reader who has just joined the project.
++3. **No Chitchat**: Avoid conversational filler. Focus exclusively on technical rationale and findings. Do not narrate your tool usage.
++
++---
++
++# Role
++
++You are **Ticket Readiness Goldfish**.
++You are the engineer who will be assigned one of these tickets next week. You will receive that ticket and the design document it links to, and nothing else: no meeting, no chat history, no author to ask. You are also the lead who must check that the whole set, done in order, builds what the design describes and nothing more.
++
++---
++
++# Instructions
++
++### Mode: REVIEW (Ticket Set Audit)
++
++The target is a ticket draft with a Plan Inventory, one section per ticket, a Coverage Matrix, a Dependency Graph, and a Design Updates Needed list. The Goldfish context includes the design document.
++
++1. **Read the design document first**, then the target, then the standard.
++2. **Per ticket**: Read the ticket as if it were the only ticket you received. Ask: *"Do I know exactly which files to change, what to change in each, and how to prove I am done, using only this ticket and the design sections it links?"*
++3. **Across the set**: Compare the Plan Inventory with the design, and the Coverage Matrix and Dependency Graph with the tickets.
++
++### Audit Vectors
++
++* **Self-Containment Gaps**: The ticket depends on knowledge that is in neither the ticket nor a linked design section (e.g., "use the agreed format", "as discussed", a name that is defined only in another ticket).
++* **New Decisions**: The ticket states a decision that the design does not make and that is not listed under Design Updates Needed (e.g., a new field, error code, interface, dependency, or file). Also flag any ticket that leaves such a decision to the implementer.
++* **Coverage Gaps**: A design Target File, CUJ, or Verification item is missing from the Plan Inventory, or an inventory id is not covered by any ticket. A Coverage Matrix row that disagrees with the tickets' `Covers` lists.
++* **Scope Creep**: A ticket lists a file outside the design's Target Files, or a change the design does not describe.
++* **Dependency Errors**: A ticket uses something (a type, table, endpoint, flag) that is created in a ticket it does not depend on, or in a later ticket. A cycle, or a dependency on an unknown id.
++* **Unbuildable Increments**: After this ticket and its dependencies, the code would not build or its listed tests could not pass (e.g., a call to a function that a later ticket adds).
++* **Untestable Acceptance**: An acceptance criterion that cannot be checked from code or a test run (e.g., "works well", "is fast" with no number), or a ticket with no verification command.
++* **Ownership Conflicts**: Two tickets change the same file without both marking it `shared` with a reason, or their described changes to that file conflict.
++
++---
++
++# Output Format
++
++Report your findings back to the orchestrator in plain, natural language.
++
++For each finding, include:
++1. **Severity**: [Blocker | Major | Nit]
++   * Blocker: an implementer would build the wrong thing, or the set misses part of the design.
++   * Major: an implementer would have to stop and ask, or a ticket cannot be verified.
++   * Nit: wording or formatting that slows a reader but does not change the result.
++2. **Affected Scope**: Ticket id(s), section, and line numbers in the target.
++3. **Audit Vector**: One of the vectors above.
++4. **Finding & Guidance**: What is missing or wrong, quoting the ticket and the design, and what the ticket must say instead. If the fix needs a design decision, say so; do not propose the decision.
+diff --git a/com.github.copilot/agents/egm-ticket-readiness.agent.md b/com.github.copilot/agents/egm-ticket-readiness.agent.md
+new file mode 100644
+index 0000000..c2d9787
+--- /dev/null
++++ b/com.github.copilot/agents/egm-ticket-readiness.agent.md
+@@ -0,0 +1,25 @@
++---
++name: egm-ticket-readiness
++description: Ticket readiness review using the canonical EGM persona. Experimental Copilot CLI adapter.
++tools: [read, search]
++include-custom-instructions: false
++user-invocable: false
++---
++
++<!-- Copyright 2026 Google LLC. SPDX-License-Identifier: Apache-2.0 -->
++
++Use only the assigned task and its explicit reading list.
++Require an absolute EGM package root from the caller. Read
++`<EGM_ROOT>/agents/ticket_readiness.md` before work. Follow that canonical
++persona, not a similarly named file in the user's project.
++Resolve bundled standards under `<EGM_ROOT>/resources/document_standards/`.
++The caller must supply absolute paths for the target and every required standard.
++
++Read the target, required standards, and explicitly referenced source files.
++If a required path is absent or unreadable, return an incomplete review.
++Do not retrieve parent history or memory.
++Read prior reviewer reports only when explicitly supplied in the reading list
++and required by the canonical workflow stage. Do not retrieve other prior findings.
++Do not edit files, run commands, delegate, or use MCP tools.
++Return findings and the paths you read to the caller through the native result.
++The caller writes reports. Do not claim independent verification from self-report.
+diff --git a/com.github.copilot/agents/egm.agent.md b/com.github.copilot/agents/egm.agent.md
+index d6b1df9..f0d9c5b 100644
+--- a/com.github.copilot/agents/egm.agent.md
++++ b/com.github.copilot/agents/egm.agent.md
+@@ -14,7 +14,7 @@ same root. Keep hyphens in skill directory names; for example, read
+ 
+ Follow the shared skill's workflow and human approval gates. This profile
+ adapts host tools and paths; it does not replace the shared workflow.
+-Use the eight registered EGM reviewer profiles for direct native delegation.
++Use the nine registered EGM reviewer profiles for direct native delegation.
+ Prefix canonical persona names with `egm:` when selecting native profiles.
+ For example, `egm-design` maps to `egm:egm-design`.
+ Keep synthesis and artifact writes in this main session.
+diff --git a/docs/designs/README.md b/docs/designs/README.md
+index 9e9e67f..f00f7c2 100644
+--- a/docs/designs/README.md
++++ b/docs/designs/README.md
+@@ -16,6 +16,7 @@ operational guardrails.
+ | [architecture.md](architecture.md)<br>System architecture of the EGM framework covering component models, end-to-end dataflow, and agent lifecycle. | [@quinnjim](https://github.com/quinnjim), [@eewing314](https://github.com/eewing314) | [EGM Framework Architecture](../../README.md) |
+ | [brainstorm.md](brainstorm.md)<br>Fast zero-doc ideation tool using a 7-lens Goldfish swarm to audit and stress-test early concepts before drafting. | [@briansuchy](https://github.com/briansuchy) | [`egm-brainstorm`](../../skills/egm-brainstorm/SKILL.md) |
+ | [draft.md](draft.md)<br>Iterative section-by-section specification drafting protocol and semantic boundary definitions. | [@quinnjim](https://github.com/quinnjim), [@eewing314](https://github.com/eewing314) | [`egm-draft`](../../skills/egm-draft/SKILL.md) |
++| [tickets.md](tickets.md)<br>Proposed skill that splits an approved design into ordered, self-contained Markdown tickets, reviewed by a new Ticket Readiness Goldfish. | Mandeep | [`egm-tickets`](../../skills/egm-tickets/SKILL.md) |
+ | [drift_report.md](drift_report.md)<br>Automated scanner to detect and report divergence between checked-in design specifications and live codebase implementations. | [@quinnjim](https://github.com/quinnjim) | [`egm-drift-report`](../../skills/egm-drift-report/SKILL.md) |
+ | [bootstrap.md](bootstrap.md)<br>Bottom-up recursive bootstrapping and sentinel-block upserting of documentation across package and repository trees. | [@briansuchy](https://github.com/briansuchy) | [`egm-bootstrap`](../../skills/egm-bootstrap/SKILL.md) |
+ | [review.md](review.md)<br>Multi-stage verification protocol and automated resolution engine using isolated Goldfish reviewer personas. | [@tearseb](https://github.com/tearseb), [@briansuchy](https://github.com/briansuchy) | [`egm-review`](../../skills/egm-review/SKILL.md) |
+diff --git a/docs/designs/architecture.md b/docs/designs/architecture.md
+index e7fdac2..1de86e6 100644
+--- a/docs/designs/architecture.md
++++ b/docs/designs/architecture.md
+@@ -66,13 +66,15 @@ Modular agent capabilities executable via slash commands or direct invocation:
+ *   `egm-review`: Orchestrator for the multi-stage review pipeline.
+ *   `egm-review-loop`: Concurrent subagent review dispatcher.
+ *   `egm-resolve`: Interactive resolution and patch application.
++*   `egm-tickets`: Splits an approved design into ordered Markdown tickets and reviews them with the Ticket Readiness Goldfish.
+ *   `egm-drift-report`: Agent workflow comparing specs and READMEs to code via host search and file-reading tools.
+ *   `egm-bootstrap`: Recursive bottom-up codebase documentation generator.
+ 
+ ### 2. Personas Layer (`agents/`)
+ Stateless system prompt instructions for isolated Goldfish reviewer subagents
+ (Comprehension, Design Critic, Implementation Readiness, Codebase Auditor,
+-Structural Validator, Style Editor, Inventive Catalyst, and Synthesizer).
++Structural Validator, Style Editor, Inventive Catalyst, Ticket Readiness, and
++Synthesizer).
+ 
+ ### 3. Document Standards (`resources/document_standards/`)
+ Goldfish reviewers load the versioned rubrics listed in the
+diff --git a/docs/designs/tickets.md b/docs/designs/tickets.md
+new file mode 100644
+index 0000000..947b9f0
+--- /dev/null
++++ b/docs/designs/tickets.md
+@@ -0,0 +1,294 @@
++# EGM Ticket Breakdown (Approved Design to Actionable Tickets)
++
++*   **Author:** Mandeep
++*   **Status:** Proposed
++*   **Date:** 2026-11-16
++
++--------------------------------------------------------------------------------
++
++## Overview
++
++`/egm-tickets` reads an approved EGM design document and splits its Detailed
++Implementation Plan into a set of small, ordered tickets. Each ticket is a
++Markdown file that one engineer or one fresh agent session can pick up and
++finish without reading the design conversation. A new Goldfish reviewer,
++`egm-ticket-readiness`, checks the ticket set in a fresh context before the
++files are written.
++
++The skill sits after `/egm-review` in the feature flow:
++
++```text
++egm-brainstorm -> egm-draft -> egm-review -> egm-tickets -> implement -> egm-drift-report
++```
++
++## The Problem
++
++EGM ends at an approved design document. The Detailed Implementation Plan in
++that document lists every file to change, but it is one long list ordered by
++file, not by unit of work. Teams then split it by hand, and three things go
++wrong:
++
++1.  **Lost coverage**: a file, a CUJ, or a verification step from the plan is
++    not assigned to any ticket and is never built.
++2.  **New decisions in tickets**: the person splitting the plan fills gaps
++    (an interface between two tickets, an order of migrations) without the
++    design author. The ticket then disagrees with the approved design.
++3.  **Tickets that need the whole conversation**: a ticket says "implement the
++    retry logic" and only someone who read the design discussion knows what
++    that means. A fresh agent session given that ticket guesses.
++
++The same Goldfish idea that EGM applies to designs applies here: a reviewer who
++holds only one ticket and the design document finds the missing context.
++
++## Goals
++
++*   Turn an approved design document into tickets with no manual splitting.
++*   Assign every planned file, CUJ, and verification item to at least one
++    ticket, and show this in a coverage matrix.
++*   Add no design decisions in tickets. A gap found while splitting goes back
++    to the author as a question, or back to the design document.
++*   Keep the codebase buildable and testable after each ticket, in dependency
++    order.
++*   Review the ticket set with a fresh-context Goldfish before writing it.
++*   Write tracker-neutral Markdown files with YAML frontmatter, so other tools
++    can import them later.
++
++## Non-Goals
++
++*   Creating issues in Jira, GitHub, or any other tracker. Import is a later
++    step and is not part of this skill.
++*   Estimating effort in hours or story points. Tickets carry only a rough
++    size (S, M, L) derived from the number of files and changes.
++*   Changing the design document. If splitting shows a gap, the skill stops and
++    points the user to `/egm-draft` or `/egm-review`.
++*   Implementing tickets or tracking their status after they are written.
++
++## Open Questions
++
++*   **Tracker import**: Should a later version add an optional export
++    (Jira CSV, `gh issue create`) from the frontmatter? Out of scope here.
++
++## Critical User Journeys (CUJs)
++
++### CUJ 1: Split an approved design
++
++*   **Given**: `docs/designs/webhooks.md` has `Status: Approved` and a Detailed
++    Implementation Plan with eight target files.
++*   **When**: The user runs `/egm-tickets docs/designs/webhooks.md` and picks a
++    slicing strategy.
++*   **Then**: The skill writes `tickets_draft.md`, runs the Goldfish review,
++    and after approval writes `docs/tickets/webhooks/README.md` and one
++    `T<NN>-<slug>.md` file per ticket. Every target file appears in the
++    coverage matrix.
++
++### CUJ 2: Splitting exposes a design gap
++
++*   **Given**: Two planned files must share an interface that the design does
++    not define.
++*   **When**: The skill slices them into separate tickets.
++*   **Then**: The skill does not invent the interface. It asks the author one
++    question with up to three options, records the answer in the ticket, and
++    tells the user to update the design document as well. If the author wants
++    to update the design first, the skill stops.
++
++### CUJ 3: Design is not approved
++
++*   **Given**: The design document has `Status: Draft`.
++*   **When**: The user runs `/egm-tickets`.
++*   **Then**: The skill asks whether to run `/egm-review` first or continue,
++    and records `design_status: Draft` in every ticket if the user continues.
++
++## Technical Plan (Architecture)
++
++```mermaid
++sequenceDiagram
++    autonumber
++    actor Author
++    participant Elephant as egm-tickets (main context)
++    participant Loop as egm-review-loop (in-thread)
++    participant Goldfish as egm-ticket-readiness + egm-codebase-details
++    Author->>Elephant: /egm-tickets docs/designs/<feature>.md
++    Elephant->>Elephant: Build plan inventory (F, C, V, G ids)
++    Elephant->>Author: Slicing strategy gate (author decides)
++    Elephant->>Elephant: Write tickets_draft.md + coverage self-check
++    Elephant->>Loop: TargetFile=tickets_draft.md, GoldfishContext=[design doc, planned files]
++    Loop->>Goldfish: Fresh-context review
++    Goldfish-->>Loop: Findings
++    Loop-->>Author: ticket_readiness_report.md + resolve gate
++    Author->>Elephant: Approve
++    Elephant->>Elephant: Write <TICKETS_DIR>/<feature>/README.md and T<NN>-<slug>.md
++```
++
++### Plan inventory
++
++Before slicing, the Elephant reads the design and lists every item a ticket
++must cover, with stable ids:
++
++| Id | Source section | Item |
++| :- | :------------- | :--- |
++| `F<n>` | Detailed Implementation Plan, Target Files | One file entry, in plan order |
++| `C<n>` | Critical User Journeys | One CUJ |
++| `V<n>` | Verification Plan | One verification item |
++| `G<n>` | Goals | One goal |
++
++The inventory is the basis of the coverage matrix and the mechanical checks.
++
++### Slicing strategy
++
++How to split is an architectural choice with more than one defensible answer,
++so the author picks it, following EGM's "Author Decides Architecture" rule:
++
++*   **Vertical slices by CUJ**: each ticket delivers one user journey end to
++    end. Fails when CUJs share most files.
++*   **Layer by layer in plan order**: schema, then core logic, then API, then
++    UI. Fails when early tickets cannot be tested without later ones.
++*   **Size-capped increments**: about 200 to 400 changed lines per ticket,
++    each leaving the build green. Fails when the plan has one large file.
++
++### Ticket format
++
++Each ticket has YAML frontmatter (`id`, `title`, `status`, `size`,
++`depends_on`, `covers`, `design`, `design_status`) and these sections:
++Summary, Context, Files, Changes, Acceptance Criteria, Verification, Out of
++Scope. The full template is in
++[`skills/egm-tickets/references/ticket.md`](../../skills/egm-tickets/references/ticket.md).
++
++The Files section is a write allowlist: the implementer must not change any
++file that is not listed there.
++
++### Mechanical checks (Elephant, before review)
++
++1.  Every `F`, `C`, and `V` id is covered by at least one ticket. A `G` id
++    with no ticket is reported but does not block.
++2.  Every planned file is owned by exactly one ticket, or is listed as shared
++    with a reason in each ticket that touches it.
++3.  No ticket lists a file that is not in the design's Target Files. Such a
++    file is a design gap, not a ticket detail.
++4.  `depends_on` has no cycles and no unknown ids. Tickets are numbered in a
++    valid build order.
++
++### Goldfish review
++
++The skill reuses `egm-review-loop` in-thread, so convergence, resolution, and
++report rules are the same as for designs:
++
++*   `TargetFile`: `tickets_draft.md`, `full file`.
++*   `Reviewers`: `egm-ticket-readiness`, `egm-codebase-details`.
++*   `Standards`: both mapped to `ticket-readiness-standard`.
++*   `GoldfishContext`: the design document and the planned files that exist.
++
++The new persona reads the ticket set as an engineer who receives one ticket
++and the design document, and nothing else. The new standard
++([`ticket-readiness-standard.md`](../../resources/document_standards/ticket-readiness-standard.md))
++defines the bar: self-contained, zero new decisions, complete coverage,
++correct dependencies, buildable increments, testable acceptance criteria.
++
++## Alternatives Considered
++
++### Alternative A: Add a ticket section to the design document template
++
++*   **Pros**: No new skill. The review already covers the design.
++*   **Cons**: Mixes the "what" with the work split. The design document becomes
++    stale as tickets change. The Stage 9 reviewer reads the plan, not per-ticket
++    self-containment.
++*   **Reason for Rejection**: Rejected by author: tickets have a different
++    reader (one implementer, one ticket) and need their own review.
++
++### Alternative B: Create tracker issues directly
++
++*   **Pros**: One step from design to tracker.
++*   **Cons**: Needs credentials and a connector per tracker. Hard to review and
++    revise before creation.
++*   **Reason for Rejection**: Rejected by author: Markdown keeps the skill
++    tracker-neutral and reviewable. Frontmatter allows a later import step.
++
++### Alternative C: Reuse `egm-implementation-readiness` as the reviewer
++
++*   **Pros**: No new persona.
++*   **Cons**: That persona checks one plan for missing decisions. It does not
++    check coverage across tickets, dependency order, or whether one ticket is
++    understandable without the others.
++*   **Reason for Rejection**: Rejected by author: the new persona keeps the
++    same zero-decision rule and adds the set-level checks.
++
++--------------------------------------------------------------------------------
++
++## Non-Functional Requirements
++
++*   **Token cost**: one review round runs two reviewers. Convergence needs two
++    clean rounds, capped at five, as in `egm-review-loop`.
++*   **Safety**: the skill writes only `tickets_draft.md`, the review report,
++    and files under the chosen tickets folder. It refuses to overwrite an
++    existing ticket folder without the user's choice.
++
++--------------------------------------------------------------------------------
++
++## Detailed Implementation Plan
++
++### Target Files to Create/Modify
++
++#### 1. `skills/egm-tickets/SKILL.md` (Create)
++
++*   **Type / Scope**: Skill definition.
++*   **Proposed Changes**: Workflow steps 1 to 7: intake and approval check,
++    plan inventory, slicing gate, draft, mechanical checks, Goldfish review
++    through `egm-review-loop`, finalize.
++
++#### 2. `skills/egm-tickets/references/ticket.md` (Create)
++
++*   **Type / Scope**: Template.
++*   **Proposed Changes**: Draft layout, ticket layout with frontmatter, and
++    index (`README.md`) layout with coverage matrix and dependency graph.
++
++#### 3. `skills/egm-tickets/{TEST.md,test_scenarios.yaml,agents/openai.yaml,assets/icon.svg}` (Create)
++
++*   **Type / Scope**: Test plan, scenarios, Codex metadata, icon.
++*   **Proposed Changes**: Follow the existing skill layout. Icon uses the
++    drafting palette (`#1b6ef3`, `#7cacf8`).
++
++#### 4. `agents/ticket_readiness.md` (Create)
++
++*   **Type / Scope**: Canonical Goldfish persona.
++*   **Proposed Changes**: Read-only reviewer with audit vectors for
++    self-containment, zero-decision, coverage, dependencies, buildable
++    increments, acceptance criteria, scope creep.
++
++#### 5. `resources/document_standards/ticket-readiness-standard.md` (Create)
++
++*   **Type / Scope**: Review standard.
++
++#### 6. Host adapters (Create / Modify)
++
++*   `.claude-plugin/agents/ticket_readiness.md` and its entry in
++    `.claude-plugin/plugin.json`.
++*   `.cursor-plugin/agents/ticket_readiness.md`.
++*   `com.github.copilot/agents/egm-ticket-readiness.agent.md`.
++*   `.windsurf/workflows/egm-tickets.md`.
++*   `adapters/opencode/install.py`: add `ticket_readiness` to `REVIEWERS`.
++
++#### 7. Packaging and tests (Modify)
++
++*   `scripts/pack_plugin.py`: add the skill, persona, and standard to the
++    required files.
++*   `tests/unit/test_harnesses.py`, `tests/unit/test_packaging.py`,
++    `tests/unit/test_windsurf.py`: register the new skill and reviewer.
++
++#### 8. Documentation (Create / Modify)
++
++*   `README.md`, `docs/getting_started.md`, `resources/README.md`,
++    `docs/designs/README.md`, `docs/site/skills.md`,
++    `docs/site/skills/egm-tickets.md`, and the site navigation.
++*   `skills/egm-review/SKILL.md`: after Stage 9 concludes, mention
++    `/egm-tickets` as the next step.
++
++### Verification Plan
++
++*   **Unit Tests**: `pytest tests/unit` passes.
++*   **Lint**: `ruff check` passes.
++*   **Manual**: run `/egm:egm-tickets` in Claude Code on an approved design
++    with at least five target files; confirm the coverage matrix lists every
++    `F` id and the Goldfish report is written.
++
++--------------------------------------------------------------------------------
++
++*Drafted with EGM*
+diff --git a/docs/getting_started.md b/docs/getting_started.md
+index c3c8a16..4983e1a 100644
+--- a/docs/getting_started.md
++++ b/docs/getting_started.md
+@@ -86,6 +86,19 @@ The "core" workflow looks like:
+     > testing strategies, etc. EGM is not opinionated here. Add your skills to
+     > your implementation plan!
+ 
++## Ticket Breakdown
++
++When a design is approved and the work is too large for one change, split it:
++
++*   **`/egm-tickets docs/designs/<feature>.md`**: Turn the Detailed
++    Implementation Plan into ordered tickets under
++    `docs/tickets/<feature>/`. Each ticket lists the files it may change, the
++    exact changes from the design, acceptance criteria, and verification
++    commands. A fresh `egm-ticket-readiness` reviewer checks that each ticket
++    can be finished with only the ticket and the design. If splitting needs a
++    decision the design does not make, the skill asks you instead of
++    inventing it.
++
+ ## Drift Detection
+ 
+ To ensure that your design specifications and active codebase remain
+diff --git a/docs/site/skills.md b/docs/site/skills.md
+index 66327ed..3a15695 100644
+--- a/docs/site/skills.md
++++ b/docs/site/skills.md
+@@ -33,6 +33,14 @@ Get independent feedback and work through the findings.
+ 
+ The default review follows the software design workflow. Custom review lets you choose reviewers and standards for another type of document.
+ 
++## Plan the work
++
++Turn an approved design into units of work.
++
++- [Split into tickets](/skills/egm-tickets) `/egm-tickets`
++
++  Split an approved design into ordered tickets that each stand alone.
++
+ ## Work with code
+ 
+ Document a codebase and check whether it matches the plan.
+diff --git a/docs/site/skills/egm-tickets.md b/docs/site/skills/egm-tickets.md
+new file mode 100644
+index 0000000..685c9e4
+--- /dev/null
++++ b/docs/site/skills/egm-tickets.md
+@@ -0,0 +1,30 @@
++---
++title: Split into tickets
++description: Split an approved design into ordered tickets that each stand alone.
++---
++
++## What it does
++
++The assistant reads an approved design document and splits its implementation plan into tickets. You choose how to split: by user journey, by layer, or by size. Each ticket lists the files it may change, the exact changes from the design, acceptance criteria, and the commands that prove it is done. Tickets are ordered so that the code builds after each one.
++
++The assistant does not make design decisions while splitting. If a ticket needs something the design does not define, it asks you and records your answer as a design update.
++
++A reviewer that has not seen the conversation then reads each ticket with only the design document. It reports tickets that need missing context, parts of the design that no ticket covers, and dependencies in the wrong order.
++
++## When to use it
++
++Use Split into tickets after Review, when the design is approved and the work is too large for one change or will be shared between people or agent sessions.
++
++## What you get
++
++A folder under `docs/tickets/<feature>/` with one Markdown file per ticket and a `README.md` index. The index has a dependency graph and a coverage table that shows which ticket covers each planned file, user journey, and verification step. Each ticket has frontmatter (`id`, `status`, `depends_on`, `covers`) that other tools can read.
++
++## Example
++
++```text
++/egm-tickets docs/designs/webhooks.md
++```
++
++## Full instructions
++
++The assistant follows the [Split into tickets skill instructions](../../../skills/egm-tickets/SKILL.md) in the repository.
+diff --git a/resources/README.md b/resources/README.md
+index 753fbd4..72d10c3 100644
+--- a/resources/README.md
++++ b/resources/README.md
+@@ -9,6 +9,7 @@ instead of maintaining separate summaries of their requirements.
+ - [Heilmeier standard](document_standards/heilmeier-standard.md)
+ - [Implementation readiness standard](document_standards/implementation-readiness-standard.md)
+ - [Re-implementation standard](document_standards/re-implementation-standard.md)
++- [Ticket readiness standard](document_standards/ticket-readiness-standard.md)
+ - [Zoom-out standard](document_standards/zoom-out-standard.md)
+ 
+ For installation, usage, and design rationale, see the
+diff --git a/resources/document_standards/ticket-readiness-standard.md b/resources/document_standards/ticket-readiness-standard.md
+new file mode 100644
+index 0000000..59bd340
+--- /dev/null
++++ b/resources/document_standards/ticket-readiness-standard.md
+@@ -0,0 +1,55 @@
++# Ticket Readiness Standard
++
++This standard defines the quality bar for a set of tickets produced from an
++approved design document.
++
++## Core Principle
++
++A ticket passes if an engineer (or a fresh AI session) who receives only that
++ticket and the design document it links can make the correct change on the
++first attempt, without asking questions and without making design choices.
++The ticket set passes if, done in dependency order, it builds everything the
++design's Detailed Implementation Plan describes, and nothing else.
++
++## The Zero-Decision Rule
++
++Tickets add no design decisions. Every interface, field, error case, file, and
++ordering constraint in a ticket must come from the design document, or be
++listed in the draft's **Design Updates Needed** section as a decision the
++author made during the breakdown. A ticket that leaves such a choice to the
++implementer fails.
++
++## Requirements
++
++### Per ticket
++
++*   **Self-contained**: The Context section explains why the ticket exists and
++    what earlier tickets provide, and links the design sections it implements.
++    It does not rely on conversation history or on text found only in other
++    tickets.
++*   **File allowlist**: The Files table lists every file the ticket creates,
++    modifies, or deletes, by exact repository-relative path, with its inventory
++    id. Every listed file appears in the design's Target Files.
++*   **Exact changes**: For each file, the Changes section names the functions,
++    classes, fields, signatures, and error handling as the design states them.
++    "Update X to support Y" without these details fails.
++*   **Checkable acceptance**: Each acceptance criterion is a Given/When/Then
++    statement that can be checked from the code or a test run.
++*   **Verification**: At least one exact command, and the test cases the ticket
++    must add.
++*   **Out of scope**: Names related work that belongs to another ticket, with
++    that ticket's id.
++
++### Across the set
++
++*   **Complete coverage**: Every Target File, CUJ, and Verification item in the
++    design is in the Plan Inventory and is covered by at least one ticket.
++*   **Single ownership**: Each file has one owning ticket. Other tickets that
++    touch it mark it `shared` with a reason, and their changes do not conflict.
++*   **Valid order**: Tickets are numbered in build order. A ticket depends only
++    on lower-numbered tickets. The dependency graph has no cycles.
++*   **Buildable increments**: After each ticket and its dependencies, the code
++    builds and the ticket's verification passes. No ticket needs code from a
++    later ticket.
++*   **Consistent tables**: The Coverage Matrix and Dependency Graph match the
++    tickets' `Covers` and `Depends on` fields.
+diff --git a/scripts/pack_plugin.py b/scripts/pack_plugin.py
+index c84b792..877eb7a 100644
+--- a/scripts/pack_plugin.py
++++ b/scripts/pack_plugin.py
+@@ -26,7 +26,7 @@ HOST = {
+ }
+ SKILLS = (
+     "egm-bootstrap", "egm-brainstorm", "egm-draft", "egm-drift-report",
+-    "egm-resolve", "egm-review", "egm-review-loop",
++    "egm-resolve", "egm-review", "egm-review-loop", "egm-tickets",
+ )
+ REQUIRED_SHARED = (
+     "plugin.json", "LICENSE", "README.md", "assets/icon.svg",
+@@ -36,6 +36,7 @@ REQUIRED_SHARED = (
+     "skills/egm-bootstrap/references/worker-return.schema.json",
+     "skills/egm-bootstrap/references/templates.md",
+     "skills/egm-draft/references/design_doc.md",
++    "skills/egm-tickets/references/ticket.md",
+ ) + tuple(
+     f"skills/{skill}/{name}"
+     for skill in SKILLS
+@@ -44,12 +45,12 @@ REQUIRED_SHARED = (
+     f"agents/{name}.md" for name in (
+         "bootstrap_orchestrator", "codebase_details", "comprehension",
+         "design_critic", "implementation_readiness", "inventive_catalyst",
+-        "structural", "style", "synthesizer", "zoom_out",
++        "structural", "style", "synthesizer", "ticket_readiness", "zoom_out",
+     )
+ ) + tuple(
+     f"resources/document_standards/{name}-standard.md" for name in (
+         "feature-spec", "heilmeier", "implementation-readiness",
+-        "re-implementation", "zoom-out",
++        "re-implementation", "ticket-readiness", "zoom-out",
+     )
+ )
+ 
+diff --git a/site/astro.config.mjs b/site/astro.config.mjs
+index cc42d5e..a1b25f7 100644
+--- a/site/astro.config.mjs
++++ b/site/astro.config.mjs
+@@ -47,6 +47,7 @@ export default defineConfig({
+         { label: 'Review', slug: 'skills/egm-review' },
+         { label: 'Resolve findings', slug: 'skills/egm-resolve' },
+         { label: 'Custom review', slug: 'skills/egm-review-loop' },
++        { label: 'Split into tickets', slug: 'skills/egm-tickets' },
+         { label: 'Document a codebase', slug: 'skills/egm-bootstrap' },
+         { label: 'Check for drift', slug: 'skills/egm-drift-report' },
+       ] },
+@@ -63,7 +64,7 @@ export default defineConfig({
+     '/docs/getting-started': '/getting-started',
+     '/docs/workflow': '/workflow',
+     '/docs/skills': '/skills',
+-    ...Object.fromEntries(['bootstrap', 'brainstorm', 'draft', 'drift-report', 'resolve', 'review', 'review-loop'].map(skill => [`/docs/skills/egm-${skill}`, `/skills/egm-${skill}`])),
++    ...Object.fromEntries(['bootstrap', 'brainstorm', 'draft', 'drift-report', 'resolve', 'review', 'review-loop', 'tickets'].map(skill => [`/docs/skills/egm-${skill}`, `/skills/egm-${skill}`])),
+   },
+ 
+   fonts: [
+diff --git a/site/scripts/check-docs.mjs b/site/scripts/check-docs.mjs
+index d16c21c..39f405f 100644
+--- a/site/scripts/check-docs.mjs
++++ b/site/scripts/check-docs.mjs
+@@ -67,7 +67,7 @@ for (const output of [rendered.code, exported]) {
+   assert.ok(!output.includes('blob/main/site/public/favicon.svg'));
+ }
+ 
+-const pages = ['install', 'guide', 'getting-started', 'workflow', 'skills', 'skills/egm-bootstrap', 'skills/egm-brainstorm', 'skills/egm-draft', 'skills/egm-drift-report', 'skills/egm-resolve', 'skills/egm-review', 'skills/egm-review-loop'];
++const pages = ['install', 'guide', 'getting-started', 'workflow', 'skills', 'skills/egm-bootstrap', 'skills/egm-brainstorm', 'skills/egm-draft', 'skills/egm-drift-report', 'skills/egm-resolve', 'skills/egm-review', 'skills/egm-review-loop', 'skills/egm-tickets'];
+ const skillNames = (await readdir(new URL('../../skills/', import.meta.url), { withFileTypes: true }))
+   .filter(entry => entry.isDirectory()).map(entry => entry.name);
+ for (const name of skillNames) {
+diff --git a/site/src/components/SkillIcon.astro b/site/src/components/SkillIcon.astro
+index cae0acb..3743c23 100644
+--- a/site/src/components/SkillIcon.astro
++++ b/site/src/components/SkillIcon.astro
+@@ -6,8 +6,9 @@ import resolve from '../../../skills/egm-resolve/assets/icon.svg?url';
+ import drift_report from '../../../skills/egm-drift-report/assets/icon.svg?url';
+ import review from '../../../skills/egm-review/assets/icon.svg?url';
+ import review_loop from '../../../skills/egm-review-loop/assets/icon.svg?url';
++import tickets from '../../../skills/egm-tickets/assets/icon.svg?url';
+ 
+-const icons = { bootstrap, brainstorm, draft, resolve, drift_report, review, review_loop };
++const icons = { bootstrap, brainstorm, draft, resolve, drift_report, review, review_loop, tickets };
+ 
+ interface Props {
+   skill: keyof typeof icons;
+diff --git a/site/src/components/docs/PageTitle.astro b/site/src/components/docs/PageTitle.astro
+index c78bfca..9552095 100644
+--- a/site/src/components/docs/PageTitle.astro
++++ b/site/src/components/docs/PageTitle.astro
+@@ -3,7 +3,7 @@ import PageActions from './PageActions.astro';
+ import SkillIcon from '../SkillIcon.astro';
+ const { entry, toc } = Astro.locals.starlightRoute;
+ const name = entry.id.startsWith('skills/') ? entry.id.split('/')[1] : undefined;
+-const skill = name?.slice(4).replaceAll('-', '_') as 'brainstorm' | 'draft' | 'review' | 'resolve' | 'review_loop' | 'bootstrap' | 'drift_report' | undefined;
++const skill = name?.slice(4).replaceAll('-', '_') as 'brainstorm' | 'draft' | 'review' | 'resolve' | 'review_loop' | 'bootstrap' | 'drift_report' | 'tickets' | undefined;
+ ---
+ <h1 id="_top">{skill && <SkillIcon skill={skill} />}{entry.data.title}</h1>
+ {entry.data.description && <p class="description">{entry.data.description}</p>}
+diff --git a/skills/egm-review-loop/SKILL.md b/skills/egm-review-loop/SKILL.md
+index 7ee4205..f7c9e77 100644
+--- a/skills/egm-review-loop/SKILL.md
++++ b/skills/egm-review-loop/SKILL.md
+@@ -68,12 +68,13 @@ When resolving names in `Reviewers` and `Standards`:
+ 
+ *   **Reviewer Shortnames**: Map reviewer shortname (e.g., `design_critic`,
+     `structural`, `style`, `implementation_readiness`,
+-    `codebase_details`, `comprehension`, `zoom_out`) to `agents/{name}.md`.
++    `codebase_details`, `comprehension`, `zoom_out`, `ticket_readiness`) to
++    `agents/{name}.md`.
+     The persona file defines the reviewer's core mandates, audit vectors, and
+     output format.
+ *   **Standard Shortnames**: Map standard shortname (e.g., `feature-spec-standard`,
+     `implementation-readiness-standard`, `zoom-out-standard`, `heilmeier-standard`,
+-    `re-implementation-standard`) to `resources/document_standards/{name}.md`.
++    `re-implementation-standard`, `ticket-readiness-standard`) to `resources/document_standards/{name}.md`.
+ *   **Custom Paths**: If the name contains a slash (`/`), treat it as an
+     absolute or workspace-relative path and read it directly.
+ 
+@@ -97,6 +98,9 @@ Evaluate the provided inputs (`TargetFile`, `SemanticTarget`, `Reviewers`,
+     *   *Implementation Plans*: Recommend `implementation_readiness`
+         (mapped to `resources/document_standards/implementation-readiness-standard.md`)
+         and `codebase_details`.
++    *   *Ticket Sets*: Recommend `ticket_readiness` and `codebase_details`
++        (both mapped to
++        `resources/document_standards/ticket-readiness-standard.md`).
+ 4.  **Confirm Configuration**: Display the consolidated plan (Target, Reviewers,
+     and mapped Standards) and ask the user to confirm before proceeding.
+ 
+diff --git a/skills/egm-review/SKILL.md b/skills/egm-review/SKILL.md
+index cf7adae..cd0fe7a 100644
+--- a/skills/egm-review/SKILL.md
++++ b/skills/egm-review/SKILL.md
+@@ -409,7 +409,8 @@ plain chat):
+     *   Question: `"Stage 9 (Implementation Readiness Test) completed. Report
+         written to implementation_readiness_report.md. How would you like to
+         proceed?"`
+-    *   Option 0: `"Conclude review and finalize document"`
++    *   Option 0: `"Conclude review and finalize document"` (then name
++        `egm-tickets` as the next step).
+     *   Option 1: `"Resolve findings with agent (evaluate findings, propose
+         fixes, and apply approved edits)"`
+     *   Option 2: `"I will update doc manually (pause session; notify me in chat
+diff --git a/skills/egm-tickets/SKILL.md b/skills/egm-tickets/SKILL.md
+new file mode 100644
+index 0000000..e67fd92
+--- /dev/null
++++ b/skills/egm-tickets/SKILL.md
+@@ -0,0 +1,286 @@
++---
++name: egm-tickets
++license: Apache-2.0
++disable-model-invocation: true
++description: >-
++  Splits an approved EGM design document into small, ordered, self-contained
++  tickets written as Markdown files, then checks the ticket set with a
++  fresh-context Goldfish reviewer. Use after egm-review approves a design and
++  before implementation starts, when the Detailed Implementation Plan must be
++  divided into units of work for engineers or agent sessions.
++---
++
++# Ticket Breakdown (Design to Actionable Tickets)
++
++When running in Codex or ChatGPT Work, first read [Codex integration](../../docs/codex.md).
++In Claude Code or Cowork, read `${CLAUDE_PLUGIN_ROOT}/docs/claude.md` first.
++
++This skill turns the Detailed Implementation Plan of an approved design
++document into tickets. A ticket is one unit of work that one engineer, or one
++fresh agent session, can finish with only the ticket and the design document.
++The skill splits and orders work. It does not design. Every decision in a
++ticket must already be in the design document or be made by the author at a
++gate in this skill.
++
++## Delegation
++
++A Goldfish runs in a fresh context with no conversation history. Spawn each
++subagent with your harness's subagent tool (Antigravity: `invoke_subagent`; Claude Code: `Agent`; Codex: `spawn_agent`). Each subagent is defined in `agents/<file>.md`, and its
++frontmatter `name` (for example `egm-ticket-readiness`) is the subagent type to
++request where your harness registers named subagents. Otherwise spawn a
++general-purpose subagent and tell it to read that persona file first. Pass the
++prompt verbatim and wait for the report. If your harness cannot nest
++subagents, use direct dispatch instead of the synthesizer. See
++`docs/harnesses.md`. If your harness has no subagent tool, you may still write
++the tickets, but tell the user that the Goldfish review in Step 6 did not run
++and mark the index `Review: not run`.
++
++## Execution Constraints (CRITICAL)
++
++1.  You **MUST** read and apply the execution instructions in
++    `resources/execution_instructions.md`. This skill writes tickets, not
++    production code.
++2.  **Artifact-First Delivery (MANDATORY)**: Do not paste the ticket set, the
++    inventory, or review reports into chat. Write them with your file-writing
++    tool and give the user the path.
++3.  **Plain-English Standard**: Write tickets in simple, direct English. Name
++    files, functions, fields, and commands exactly as the design names them.
++    Do not use promotional adjectives or decorative adverbs.
++4.  **No New Decisions (Zero-Decision Rule)**: Do not invent an interface, a
++    field, an error case, an order of migrations, a dependency, or a file that
++    the design does not define. When splitting needs such a decision, use the
++    Design Gap Gate below.
++5.  **No Glazing, No Apologies**: Do not praise the design or the user's
++    choices. When corrected, state the corrected logic directly.
++6.  **Interaction Invariants**: Every interactive gate (a structured question
++    tool such as `ask_question`, if your harness has one, or plain chat) has
++    exactly one question, is the only tool call in the turn, and gives
++    action-oriented options without `(Recommended)` labels. Always write a
++    short visible chat message before the gate.
++7.  **Author Decides Architecture**: When a choice has more than one defensible
++    answer, present up to three options, each with how it works, its
++    trade-offs, and when it fails. Do not rank them or pick one. If the author
++    says "just pick one", restate the trade-offs and show the same gate again.
++    Decide mechanical choices yourself (ticket numbering, slugs, file names).
++
++## Inputs
++
++*   **`DesignFile`**: Path to the design document. If omitted, look for the most
++    recently modified `docs/designs/*.md` whose `Status` is `Approved`, show its
++    path, and ask the user in plain chat to confirm it or give another path.
++    Ask for a path with a regular text message, not a structured question tool.
++*   **`TicketsDir`** (Optional): Folder for the final tickets. If omitted, Step 7
++    asks.
++
++## Design Gap Gate
++
++Use this gate whenever splitting needs a decision the design does not make.
++Common cases: two tickets share an interface the design does not define, a
++ticket cannot be tested without a stub the design does not mention, the plan
++does not say which change must land first, or a needed file is missing from
++Target Files.
++
++1.  Write one line in chat that quotes the design text and names the gap.
++2.  Present one single-select gate:
++
++    ```json
++    {
++      "questions": [
++        {
++          "question": "Splitting needs a decision the design does not make: [gap]. How should we handle it?",
++          "options": [
++            "[Option A: mechanism; trade-off; fails when]",
++            "[Option B: mechanism; trade-off; fails when]",
++            "Stop and update the design document first"
++          ],
++          "is_multi_select": false
++        }
++      ]
++    }
++    ```
++
++3.  If the author picks an option, record it in the affected tickets under
++    **Context** as `Decided during ticket breakdown: [decision]`, and add it to
++    the `Design Updates Needed` list in `tickets_draft.md`.
++4.  If the author picks "Stop", list the gaps found so far in chat and tell the
++    user to update the design with `egm-draft` or `egm-review` (use the host's
++    command form, for example `/egm:egm-draft` in Claude Code). End the skill.
++
++A file missing from Target Files is always a gap. Never add it on your own.
++
++## Execution Workflow
++
++Follow the steps in order. Do not skip a gate.
++
++### Step 1: Intake and Approval Check
++
++1.  Resolve `DesignFile` as described in Inputs. Read it in full.
++2.  Confirm the design has a **Detailed Implementation Plan** with a **Target
++    Files** list. If it does not, tell the user that tickets need that section
++    and suggest running `egm-draft` Step 5. End the skill.
++3.  Read the `Status` line. If it is not `Approved`, present one gate:
++    *   Question: `"The design status is [Status], not Approved. How would you like to proceed?"`
++    *   Option 0: `"Run egm-review on the design first"` → tell the user the
++        host's command for `egm-review` with this path and end the skill.
++    *   Option 1: `"Continue and mark every ticket with this design status"` →
++        set `design_status` in every ticket to the current status.
++4.  Read the **Open Questions** section. If it lists open questions, list them
++    in chat and present one gate: `"Continue with open questions"` (each
++    affected ticket names the question under Context) or `"Stop and resolve
++    them in the design first"`.
++5.  Read every file listed in Target Files that exists in the workspace, so the
++    tickets use current names and paths.
++
++### Step 2: Plan Inventory
++
++Build the inventory and write it as the first section of `tickets_draft.md`
++(layout in [references/ticket.md](references/ticket.md)). Use these ids, in the
++order the design lists the items:
++
++*   `F<n>`: each entry in Target Files. Keep the path and the action (Create,
++    Modify, Delete).
++*   `C<n>`: each Critical User Journey.
++*   `V<n>`: each item in the Verification Plan.
++*   `G<n>`: each Goal.
++
++Do not merge, reword, or drop items. If the design groups several files in
++one entry, keep one `F` id per file and note the group.
++
++Notify the user in chat with the path and the counts (`F`, `C`, `V`, `G`).
++
++### Step 3: Slicing Strategy Gate
++
++Present one single-select gate. Fill each option with this design's facts (for
++example, which CUJs share files, or which file is largest):
++
++```json
++{
++  "questions": [
++    {
++      "question": "How should the plan be split into tickets?",
++      "options": [
++        "Vertical slices by CUJ: each ticket delivers one journey end to end; fails when CUJs share most files",
++        "Layer by layer in plan order: data, core logic, interface, tests; fails when early layers cannot be tested alone",
++        "Size-capped increments of about 200 to 400 changed lines, each leaving the build green; fails when one file is the whole change"
++      ],
++      "is_multi_select": false
++    }
++  ]
++}
++```
++
++A write-in answer (for example, "one ticket per service") is valid. Restate it
++in one line and use it.
++
++### Step 4: Draft the Tickets
++
++Write the tickets into `tickets_draft.md` in the working directory (or your
++harness's artifact directory, if it has one), using the draft layout in
++[references/ticket.md](references/ticket.md). Rules:
++
++1.  **Order**: Number tickets `T01`, `T02`, ... in a valid build order. A
++    ticket depends only on tickets with lower numbers.
++2.  **Buildable increments**: After each ticket, in number order, the code
++    builds and the tests listed so far pass. If a ticket can only pass with a
++    later ticket, merge them or reorder them.
++3.  **Files are an allowlist**: List every file the ticket creates, modifies,
++    or deletes, with its `F` id. The implementer must not touch other files.
++4.  **Changes come from the design**: For each file, state the changes the
++    design specifies for this ticket, with names and signatures copied from the
++    design. Link the design section, for example
++    `[Detailed Implementation Plan, item 3](../designs/webhooks.md#3-...)`.
++    Split one design entry across tickets only along a line the design already
++    draws (for example, two functions it describes separately); otherwise use
++    the Design Gap Gate.
++5.  **Self-contained context**: The Context section says, in two to five
++    sentences, why this ticket exists and what earlier tickets already
++    provide. Do not refer to the chat ("as discussed").
++6.  **Acceptance criteria**: Write Given/When/Then statements that a reviewer
++    can check from the code or a test run. Reuse the design's CUJ wording when
++    the ticket delivers a CUJ.
++7.  **Verification**: Give the exact commands from the design's Verification
++    Plan that apply to this ticket, and the test cases the ticket must add.
++8.  **Size**: `S` (one or two files, no new public interface), `M` (three to
++    five files, or one new interface), `L` (more). If a ticket is larger than
++    `L` would suggest, split it again.
++9.  **Out of scope**: Name what a reader might expect in this ticket but is in
++    another ticket, with that ticket's id.
++
++Then write the **Coverage Matrix** and **Dependency Graph** sections, and the
++**Design Updates Needed** list (empty if no gap was decided in this skill).
++
++### Step 5: Mechanical Checks
++
++Check the draft yourself before any reviewer sees it. Fix failures in the
++draft, or use the Design Gap Gate if a fix needs a decision.
++
++1.  Every `F`, `C`, and `V` id appears in at least one ticket's `covers` list.
++    A `G` id with no ticket is listed in chat but does not block.
++2.  Every file is owned by exactly one ticket, or every ticket that touches it
++    lists it as `shared` with a one-line reason.
++3.  No ticket lists a file outside Target Files.
++4.  Every `depends_on` id exists, points to a lower number, and the graph has
++    no cycles.
++5.  Every ticket has all sections from the template, with no `TBD`.
++
++Write the result as a **Checks** list at the end of `tickets_draft.md` (one
++line per check, `pass` or what failed and how it was fixed). Notify the user
++in chat with the path, the number of tickets, and any check that needed a fix.
++Then present one gate:
++
++*   Question: `"Drafted [N] tickets in tickets_draft.md. How would you like to proceed?"`
++*   Option 0: `"Run the Goldfish ticket review"`
++*   Option 1: `"Request changes to the tickets (inline comments or write-in)"`
++*   Option 2: `"Skip review and write the ticket files"`
++
++On Option 1 with no write-in and no inline comments, ask in chat what to
++change and end your turn. After changes, run Step 5 again. On Option 2, go to
++Step 7 and mark the index `Review: skipped by author`.
++
++### Step 6: Goldfish Ticket Review
++
++Run `egm-review-loop` in this thread (read its `SKILL.md` and follow it; in
++Claude Code do not use the `Skill` tool) with:
++
++*   `TargetFile`: `tickets_draft.md` (absolute path)
++*   `SemanticTarget`: `full file`
++*   `Reviewers`: `[egm-ticket-readiness, egm-codebase-details]`
++*   `Standards`: `{"egm-ticket-readiness": "ticket-readiness-standard",
++    "egm-codebase-details": "ticket-readiness-standard"}`
++*   `GoldfishContext`: the absolute path of `DesignFile`, plus every file from
++    Target Files that exists in the workspace.
++
++Pass these inputs directly; do not run the loop's intake questions again. The
++loop writes its report and runs `egm-resolve`. Copy the final report to
++`ticket_readiness_report.md`, tell the user its path, then present one gate:
++
++*   Question: `"Ticket review completed. Report written to ticket_readiness_report.md. How would you like to proceed?"`
++*   Option 0: `"Write the ticket files"`
++*   Option 1: `"Resolve findings with agent"`
++*   Option 2: `"I will update tickets_draft.md manually (notify me in chat when done)"`
++*   Option 3: `"Pause (save progress and exit)"`
++
++A finding that needs a design decision goes through the Design Gap Gate, not
++`egm-resolve`. After any change to the draft, run Step 5 again before Step 7.
++
++### Step 7: Write the Ticket Files
++
++1.  **Target folder**: If `TicketsDir` was given, use it. Otherwise look for an
++    existing `docs/tickets/` or `tickets/` folder, bind `[DiscoveredPath]`
++    (default `docs/tickets/`), and present one gate: `"Save to detected
++    directory: [DiscoveredPath]<feature>/"` or `"Specify custom target
++    directory"`. `<feature>` is the design file name without `.md`.
++2.  **No silent overwrite**: If `<TicketsDir>/<feature>/` already has files,
++    present one gate: `"Write to a new folder <feature>-<YYYY-MM-DD>/"`,
++    `"Replace the existing ticket files"`, or `"Cancel"`.
++3.  **Write files**: Using the ticket and index layouts in
++    [references/ticket.md](references/ticket.md), write one
++    `T<NN>-<slug>.md` per ticket and a `README.md` index. Use relative links
++    from the ticket folder to the design document. Set `status: todo` on every
++    ticket.
++4.  **Keep the draft**: Leave `tickets_draft.md` and the report in place.
++5.  **Hand-off**: Tell the user the folder path, the number of tickets, the
++    first ticket with no dependencies, and any item in `Design Updates
++    Needed`. If that list is not empty, suggest updating the design with
++    `egm-draft` so `egm-drift-report` does not report the tickets' decisions
++    as drift later.
+diff --git a/skills/egm-tickets/TEST.md b/skills/egm-tickets/TEST.md
+new file mode 100644
+index 0000000..ab89715
+--- /dev/null
++++ b/skills/egm-tickets/TEST.md
+@@ -0,0 +1,23 @@
++# Test Plan: EGM Tickets Skill
++
++Frontmatter and link checks run in `pytest tests/unit` (see [TESTING.md](../../TESTING.md)).
++
++## Protocol Verification Checklist
++
++When evaluating `egm-tickets` interactively in chat, verify:
++
++-   **Step 1 (Intake):** Stops when the design has no Detailed Implementation
++    Plan. Asks before continuing with a design that is not `Approved`.
++-   **Step 2 (Inventory):** Lists one `F` id per target file, and every CUJ,
++    Verification item, and Goal, without merging or dropping any.
++-   **Step 3 (Slicing):** Asks the author to choose; does not pick a strategy
++    when told to.
++-   **Design Gap Gate:** Does not add a file, interface, or field that the
++    design lacks. Records each author decision under Design Updates Needed.
++-   **Step 5 (Checks):** Writes the Checks list and fixes coverage, ownership,
++    and dependency errors before review.
++-   **Step 6 (Review):** Dispatches `egm-ticket-readiness` and
++    `egm-codebase-details` in fresh contexts with the design document in
++    `GoldfishContext`.
++-   **Step 7 (Write):** Does not overwrite an existing ticket folder without a
++    choice. Writes one `T<NN>-<slug>.md` per ticket and a `README.md` index.
+diff --git a/skills/egm-tickets/agents/openai.yaml b/skills/egm-tickets/agents/openai.yaml
+new file mode 100644
+index 0000000..e025b4a
+--- /dev/null
++++ b/skills/egm-tickets/agents/openai.yaml
+@@ -0,0 +1,6 @@
++interface:
++  display_name: "EGM Tickets"
++  short_description: "Split an approved design into tickets"
++  icon_small: "./assets/icon.svg"
++  icon_large: "./assets/icon.svg"
++  brand_color: "#1B6EF3"
+diff --git a/skills/egm-tickets/assets/icon.svg b/skills/egm-tickets/assets/icon.svg
+new file mode 100644
+index 0000000..c73ce2d
+--- /dev/null
++++ b/skills/egm-tickets/assets/icon.svg
+@@ -0,0 +1 @@
++<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><title>Tickets</title><path fill="#1b6ef3" d="M3 6.5A1.5 1.5 0 0 1 4.5 5H19.5A1.5 1.5 0 0 1 21 6.5V9.5A2.5 2.5 0 0 0 21 14.5V17.5A1.5 1.5 0 0 1 19.5 19H4.5A1.5 1.5 0 0 1 3 17.5V14.5A2.5 2.5 0 0 0 3 9.5Z"/><path fill="#7cacf8" d="M15 6.5H16.5V8.5H15ZM15 9.75H16.5V11.25H15ZM15 12.75H16.5V14.25H15ZM15 15.5H16.5V17.5H15ZM6 9H12.5V10.5H6ZM6 12H11V13.5H6Z"/></svg>
+diff --git a/skills/egm-tickets/references/ticket.md b/skills/egm-tickets/references/ticket.md
+new file mode 100644
+index 0000000..32375ed
+--- /dev/null
++++ b/skills/egm-tickets/references/ticket.md
+@@ -0,0 +1,163 @@
++# Ticket Layouts
++
++`egm-tickets` uses three layouts: the draft (one file, reviewed by the
++Goldfish), each final ticket file, and the final index. Replace text in
++square brackets. Remove the HTML comments.
++
++--------------------------------------------------------------------------------
++
++## 1. Draft: `tickets_draft.md`
++
++````markdown
++# Tickets: [Feature Name]
++
++*   **Design:** [relative path to the design document]
++*   **Design status:** [Approved | other status chosen at Step 1]
++*   **Slicing strategy:** [strategy chosen at Step 3, in one line]
++*   **Date:** [YYYY-MM-DD]
++
++## Plan Inventory
++
++| Id | Type | Item | Source |
++| :- | :--- | :--- | :----- |
++| F1 | File (Modify) | `src/webhooks/dispatcher.py` | Detailed Implementation Plan, item 1 |
++| C1 | CUJ | Retry a failed delivery | CUJ 1 |
++| V1 | Verification | `pytest tests/webhooks` | Verification Plan |
++| G1 | Goal | Deliver each event at least once | Goals |
++
++## T01: [Imperative title, under 70 characters]
++
++[Ticket body: every section of layout 2 below, from `**Summary**` to
++`**Out of scope**`, with the frontmatter fields written as a list:]
++
++*   **Depends on:** [none | T0x, T0y]
++*   **Covers:** [F1, F2, C1, V1]
++*   **Size:** [S | M | L]
++
++[... one H2 section per ticket ...]
++
++## Coverage Matrix
++
++| Id | Tickets |
++| :- | :------ |
++| F1 | T01 |
++| F2 | T01 (owner), T03 (shared: adds one enum value) |
++| C1 | T01, T02 |
++| G1 | T02 |
++
++## Dependency Graph
++
++```mermaid
++graph TD
++  T01 --> T02
++  T01 --> T03
++  T02 --> T04
++  T03 --> T04
++```
++
++## Design Updates Needed
++
++<!-- Decisions made at the Design Gap Gate. Write "None" if empty. -->
++
++*   [T03] Decided during ticket breakdown: [decision]. Add to [design section].
++
++## Checks
++
++*   Coverage of F, C, V ids: pass
++*   Single owner per file: pass
++*   Files inside Target Files: pass
++*   Dependencies valid and acyclic: pass
++*   All sections filled: pass
++````
++
++--------------------------------------------------------------------------------
++
++## 2. Ticket file: `T<NN>-<slug>.md`
++
++`<slug>` is the title in lower case, words joined by `-`, at most six words.
++
++````markdown
++---
++id: T01
++title: [Imperative title]
++status: todo
++size: [S | M | L]
++depends_on: []
++covers: [F1, F2, C1, V1]
++design: [relative path to the design document]
++design_status: [Approved | other]
++---
++
++# T01: [Imperative title]
++
++**Summary**
++
++[One or two sentences: what this ticket delivers.]
++
++**Context**
++
++[Two to five sentences: why this ticket exists, what earlier tickets already
++provide, and a link to the design section. Name any open question or
++"Decided during ticket breakdown" item here.]
++
++**Files**
++
++| File | Action | Inventory | Note |
++| :--- | :----- | :-------- | :--- |
++| `src/webhooks/dispatcher.py` | Modify | F1 | owner |
++| `src/webhooks/models.py` | Modify | F2 | shared: adds `DeliveryState.RETRYING` only |
++
++Change only the files in this table.
++
++**Changes**
++
++1.  `src/webhooks/dispatcher.py`: [exact change from the design: function or
++    class names, signatures, fields, error handling, as the design states
++    them]. Source: [link to design section].
++2.  [...]
++
++**Acceptance Criteria**
++
++*   **Given** [state], **When** [action], **Then** [checkable result].
++*   [...]
++
++**Verification**
++
++*   [Exact command, for example `pytest tests/webhooks/test_dispatcher.py`]
++*   New tests: [test names or cases this ticket must add]
++
++**Out of scope**
++
++*   [What a reader might expect here but belongs to another ticket] (T03)
++````
++
++--------------------------------------------------------------------------------
++
++## 3. Index: `README.md`
++
++````markdown
++# Tickets: [Feature Name]
++
++*   **Design:** [link to the design document]
++*   **Design status:** [status]
++*   **Slicing strategy:** [one line]
++*   **Review:** [converged after N rounds | accepted with open findings, see report | skipped by author | not run]
++*   **Generated:** [YYYY-MM-DD] by `egm-tickets`
++
++| Id | Title | Size | Depends on | Status |
++| :- | :---- | :--- | :--------- | :----- |
++| [T01](T01-add-delivery-state.md) | Add delivery state | S | none | todo |
++| [T02](T02-retry-failed-delivery.md) | Retry failed delivery | M | T01 | todo |
++
++## Dependency Graph
++
++[Copy the Mermaid graph from the draft.]
++
++## Coverage Matrix
++
++[Copy the table from the draft.]
++
++## Design Updates Needed
++
++[Copy the list from the draft, or "None".]
++````
+diff --git a/skills/egm-tickets/test_scenarios.yaml b/skills/egm-tickets/test_scenarios.yaml
+new file mode 100644
+index 0000000..4e8be11
+--- /dev/null
++++ b/skills/egm-tickets/test_scenarios.yaml
+@@ -0,0 +1,56 @@
++# Copyright 2026 Google LLC
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     https://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++
++skill: "egm-tickets"
++description: "Behavioral evaluation scenario suite for egm-tickets skill."
++
++scenarios:
++  - scenario_id: "unapproved_design_gate"
++    description: "Asserts the agent asks before splitting a design whose status is not Approved."
++    eval_type: "deterministic"
++    system_prompt:
++      skill_file: "skills/egm-tickets/SKILL.md"
++    turns:
++      - user_input: "Run egm-tickets on docs/designs/webhooks.md. Its header says Status: Draft and it has a Detailed Implementation Plan with six target files."
++        assertions:
++          - type: "required_pattern"
++            pattern: "(egm-review|not Approved|design status)"
++            message: "Agent must flag the unapproved status and offer egm-review."
++          - type: "forbidden_pattern"
++            pattern: "\\(Recommended\\)"
++            message: "Gates must not mark a recommended option."
++
++  - scenario_id: "author_picks_slicing_strategy"
++    description: "Asserts the agent asks the author to choose a slicing strategy, even when told to pick."
++    eval_type: "deterministic"
++    system_prompt:
++      skill_file: "skills/egm-tickets/SKILL.md"
++    turns:
++      - user_input: "We are at Step 3 of egm-tickets for an approved rate-limiting design with three CUJs and nine target files. Just pick the best way to split it."
++        assertions:
++          - type: "required_pattern"
++            pattern: "((How|Which) [^?\\n]*\\?|[Cc]hoose (one|an option))"
++            message: "Agent must ask the author to choose the slicing strategy."
++
++  - scenario_id: "no_invented_files"
++    description: "Asserts the agent raises a design gap instead of adding a file the design does not list."
++    eval_type: "deterministic"
++    system_prompt:
++      skill_file: "skills/egm-tickets/SKILL.md"
++    turns:
++      - user_input: "While drafting tickets for the approved webhooks design, the retry ticket needs a new file src/webhooks/backoff.py that is not in Target Files. Add it to the ticket."
++        assertions:
++          - type: "required_pattern"
++            pattern: "(design (does not|doesn't)|Target Files|design gap|update the design)"
++            message: "Agent must treat the missing file as a design gap."
+diff --git a/tests/unit/test_harnesses.py b/tests/unit/test_harnesses.py
+index 87b75e8..194dad8 100644
+--- a/tests/unit/test_harnesses.py
++++ b/tests/unit/test_harnesses.py
+@@ -27,12 +27,12 @@ MARKETPLACES = (
+ )
+ EXPECTED_SKILLS = {
+     "egm-bootstrap", "egm-brainstorm", "egm-draft", "egm-drift-report",
+-    "egm-resolve", "egm-review", "egm-review-loop",
++    "egm-resolve", "egm-review", "egm-review-loop", "egm-tickets",
+ }
+ REVIEWERS = (
+     "codebase_details", "comprehension", "design_critic",
+     "implementation_readiness", "inventive_catalyst", "structural", "style",
+-    "zoom_out",
++    "ticket_readiness", "zoom_out",
+ )
+ 
+ 
+diff --git a/tests/unit/test_opencode_adapter.py b/tests/unit/test_opencode_adapter.py
+index 42bf822..e6d27ae 100644
+--- a/tests/unit/test_opencode_adapter.py
++++ b/tests/unit/test_opencode_adapter.py
+@@ -37,7 +37,7 @@ def test_install_preserves_resources_and_native_contract(tmp_path: Path) -> None
+     assert config["default_agent"] == "egm"
+     assert config["autoupdate"] is False
+     assert "model" not in config
+-    assert len(config["command"]) == 7
++    assert len(config["command"]) == 8
+     for skill in (ROOT / "skills").glob("*/SKILL.md"):
+         key = ADAPTER["name"](skill)
+         alias = Path(config["skills"]["paths"][0]) / key
+@@ -48,7 +48,7 @@ def test_install_preserves_resources_and_native_contract(tmp_path: Path) -> None
+         assert str(alias.resolve() / "SKILL.md") in command["template"]
+         assert "$ARGUMENTS" in command["template"]
+ 
+-    assert len(config["agent"]) == 9
++    assert len(config["agent"]) == 10
+     for filename in ADAPTER["REVIEWERS"]:
+         persona = destination / "bundle/agents" / f"{filename}.md"
+         agent = config["agent"][ADAPTER["name"](persona)]
+diff --git a/tests/unit/test_packaging.py b/tests/unit/test_packaging.py
+index a9cc637..e825a04 100644
+--- a/tests/unit/test_packaging.py
++++ b/tests/unit/test_packaging.py
+@@ -51,7 +51,7 @@ def test_runtime_bundle_is_complete_and_reproducible(
+   with zipfile.ZipFile(archive) as bundle:
+     assert bundle.testzip() is None
+     names = set(bundle.namelist())
+-    assert len([p for p in names if p.endswith("/SKILL.md")]) == 7
++    assert len([p for p in names if p.endswith("/SKILL.md")]) == 8
+     for skill in source.glob("skills/*/SKILL.md"):
+       prefix = skill.parent.relative_to(source)
+       metadata = yaml.safe_load(bundle.read((prefix / "agents/openai.yaml").as_posix()))
+@@ -107,6 +107,7 @@ def test_runtime_bundle_is_complete_and_reproducible(
+     ("drift_report", "#e86e00", "#ff8d41"),
+     ("review", "#e86e00", "#ff8d41"),
+     ("review_loop", "#e86e00", "#ff8d41"),
++    ("tickets", "#1b6ef3", "#7cacf8"),
+ ])
+ def test_skill_icon_and_host_palette_match(skill: str, base: str, facet: str) -> None:
+   root = ROOT / "skills" / f"egm-{skill.replace('_', '-')}"
+@@ -351,6 +352,8 @@ def test_refuses_unbundled_services(source: Path, tmp_path: Path, field: str) ->
+     "skills/egm-resolve/SKILL.md",
+     "skills/egm-review/SKILL.md",
+     "skills/egm-review-loop/SKILL.md",
++    "skills/egm-tickets/SKILL.md",
++    "skills/egm-tickets/references/ticket.md",
+     "skills/egm-review/agents/openai.yaml",
+     "skills/egm-review/assets/icon.svg",
+     "skills/egm-bootstrap/references/worker-return.schema.json",

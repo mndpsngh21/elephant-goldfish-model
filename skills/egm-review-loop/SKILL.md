@@ -68,12 +68,13 @@ When resolving names in `Reviewers` and `Standards`:
 
 *   **Reviewer Shortnames**: Map reviewer shortname (e.g., `design_critic`,
     `structural`, `style`, `implementation_readiness`,
-    `codebase_details`, `comprehension`, `zoom_out`) to `agents/{name}.md`.
+    `codebase_details`, `comprehension`, `zoom_out`, `ticket_readiness`) to
+    `agents/{name}.md`.
     The persona file defines the reviewer's core mandates, audit vectors, and
     output format.
 *   **Standard Shortnames**: Map standard shortname (e.g., `feature-spec-standard`,
     `implementation-readiness-standard`, `zoom-out-standard`, `heilmeier-standard`,
-    `re-implementation-standard`) to `resources/document_standards/{name}.md`.
+    `re-implementation-standard`, `ticket-readiness-standard`) to `resources/document_standards/{name}.md`.
 *   **Custom Paths**: If the name contains a slash (`/`), treat it as an
     absolute or workspace-relative path and read it directly.
 
@@ -97,6 +98,9 @@ Evaluate the provided inputs (`TargetFile`, `SemanticTarget`, `Reviewers`,
     *   *Implementation Plans*: Recommend `implementation_readiness`
         (mapped to `resources/document_standards/implementation-readiness-standard.md`)
         and `codebase_details`.
+    *   *Ticket Sets*: Recommend `ticket_readiness` and `codebase_details`
+        (both mapped to
+        `resources/document_standards/ticket-readiness-standard.md`).
 4.  **Confirm Configuration**: Display the consolidated plan (Target, Reviewers,
     and mapped Standards) and ask the user to confirm before proceeding.
 

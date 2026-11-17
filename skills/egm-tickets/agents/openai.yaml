@@ -1,0 +1,6 @@
+interface:
+  display_name: "EGM Tickets"
+  short_description: "Split an approved design into tickets"
+  icon_small: "./assets/icon.svg"
+  icon_large: "./assets/icon.svg"
+  brand_color: "#1B6EF3"

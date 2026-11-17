@@ -14,7 +14,8 @@ ROOT = Path(__file__).resolve().parents[2]
 HOST_VERSION = "1.18.29"
 REVIEWERS = (
     "codebase_details", "comprehension", "design_critic",
-    "implementation_readiness", "inventive_catalyst", "structural", "style", "zoom_out",
+    "implementation_readiness", "inventive_catalyst", "structural", "style",
+    "ticket_readiness", "zoom_out",
 )
 
 

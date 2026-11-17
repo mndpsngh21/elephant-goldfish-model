@@ -409,7 +409,8 @@ plain chat):
     *   Question: `"Stage 9 (Implementation Readiness Test) completed. Report
         written to implementation_readiness_report.md. How would you like to
         proceed?"`
-    *   Option 0: `"Conclude review and finalize document"`
+    *   Option 0: `"Conclude review and finalize document"` (then name
+        `egm-tickets` as the next step).
     *   Option 1: `"Resolve findings with agent (evaluate findings, propose
         fixes, and apply approved edits)"`
     *   Option 2: `"I will update doc manually (pause session; notify me in chat

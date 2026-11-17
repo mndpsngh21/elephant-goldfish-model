@@ -33,6 +33,14 @@ Get independent feedback and work through the findings.
 
 The default review follows the software design workflow. Custom review lets you choose reviewers and standards for another type of document.
 
+## Plan the work
+
+Turn an approved design into units of work.
+
+- [Split into tickets](/skills/egm-tickets) `/egm-tickets`
+
+  Split an approved design into ordered tickets that each stand alone.
+
 ## Work with code
 
 Document a codebase and check whether it matches the plan.

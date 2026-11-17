@@ -37,7 +37,7 @@ def test_install_preserves_resources_and_native_contract(tmp_path: Path) -> None
     assert config["default_agent"] == "egm"
     assert config["autoupdate"] is False
     assert "model" not in config
-    assert len(config["command"]) == 7
+    assert len(config["command"]) == 8
     for skill in (ROOT / "skills").glob("*/SKILL.md"):
         key = ADAPTER["name"](skill)
         alias = Path(config["skills"]["paths"][0]) / key
@@ -48,7 +48,7 @@ def test_install_preserves_resources_and_native_contract(tmp_path: Path) -> None
         assert str(alias.resolve() / "SKILL.md") in command["template"]
         assert "$ARGUMENTS" in command["template"]
 
-    assert len(config["agent"]) == 9
+    assert len(config["agent"]) == 10
     for filename in ADAPTER["REVIEWERS"]:
         persona = destination / "bundle/agents" / f"{filename}.md"
         agent = config["agent"][ADAPTER["name"](persona)]

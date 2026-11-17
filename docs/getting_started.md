@@ -86,6 +86,19 @@ The "core" workflow looks like:
     > testing strategies, etc. EGM is not opinionated here. Add your skills to
     > your implementation plan!
 
+## Ticket Breakdown
+
+When a design is approved and the work is too large for one change, split it:
+
+*   **`/egm-tickets docs/designs/<feature>.md`**: Turn the Detailed
+    Implementation Plan into ordered tickets under
+    `docs/tickets/<feature>/`. Each ticket lists the files it may change, the
+    exact changes from the design, acceptance criteria, and verification
+    commands. A fresh `egm-ticket-readiness` reviewer checks that each ticket
+    can be finished with only the ticket and the design. If splitting needs a
+    decision the design does not make, the skill asks you instead of
+    inventing it.
+
 ## Drift Detection
 
 To ensure that your design specifications and active codebase remain

@@ -66,13 +66,15 @@ Modular agent capabilities executable via slash commands or direct invocation:
 *   `egm-review`: Orchestrator for the multi-stage review pipeline.
 *   `egm-review-loop`: Concurrent subagent review dispatcher.
 *   `egm-resolve`: Interactive resolution and patch application.
+*   `egm-tickets`: Splits an approved design into ordered Markdown tickets and reviews them with the Ticket Readiness Goldfish.
 *   `egm-drift-report`: Agent workflow comparing specs and READMEs to code via host search and file-reading tools.
 *   `egm-bootstrap`: Recursive bottom-up codebase documentation generator.
 
 ### 2. Personas Layer (`agents/`)
 Stateless system prompt instructions for isolated Goldfish reviewer subagents
 (Comprehension, Design Critic, Implementation Readiness, Codebase Auditor,
-Structural Validator, Style Editor, Inventive Catalyst, and Synthesizer).
+Structural Validator, Style Editor, Inventive Catalyst, Ticket Readiness, and
+Synthesizer).
 
 ### 3. Document Standards (`resources/document_standards/`)
 Goldfish reviewers load the versioned rubrics listed in the

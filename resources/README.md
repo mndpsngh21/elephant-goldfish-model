@@ -9,6 +9,7 @@ instead of maintaining separate summaries of their requirements.
 - [Heilmeier standard](document_standards/heilmeier-standard.md)
 - [Implementation readiness standard](document_standards/implementation-readiness-standard.md)
 - [Re-implementation standard](document_standards/re-implementation-standard.md)
+- [Ticket readiness standard](document_standards/ticket-readiness-standard.md)
 - [Zoom-out standard](document_standards/zoom-out-standard.md)
 
 For installation, usage, and design rationale, see the

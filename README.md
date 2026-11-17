@@ -103,7 +103,15 @@ The agent turns the brief into `design_draft.md`, pausing after each section for
 
 Use the draft path returned by the agent.
 
-Fresh reviewers check the design, its clarity, its fit with the code, and its implementation plan. Choose which findings to address. When you approve the design, ask your coding agent to implement it.
+Fresh reviewers check the design, its clarity, its fit with the code, and its implementation plan. Choose which findings to address. When you approve the design, split it into tickets or ask your coding agent to implement it.
+
+<img src="skills/egm-tickets/assets/icon.svg" width="20" height="20" align="top" alt=""> **Split into tickets**
+
+```text
+/egm-tickets docs/designs/webhooks.md
+```
+
+The agent splits the Detailed Implementation Plan into ordered tickets, checks that every planned file is covered, and has a fresh reviewer read each ticket with only the design. Tickets are written as Markdown files under `docs/tickets/<feature>/`.
 
 See the [workflow guide](docs/getting_started.md) for the full process, including saving approved specifications under `docs/designs/`.
 
@@ -133,6 +141,7 @@ You can use each skill when you need it. You do not have to follow the full sequ
     <tr valign="top"><td width="160" valign="top"><img src="skills/egm-bootstrap/assets/icon.svg" width="20" height="20" alt="" align="top">&nbsp;<a href="skills/egm-bootstrap/SKILL.md">Bootstrap</a></td><td>Create or update documentation for an existing codebase.</td></tr>
     <tr valign="top"><td width="160" valign="top"><img src="skills/egm-review/assets/icon.svg" width="20" height="20" alt="" align="top">&nbsp;<a href="skills/egm-review/SKILL.md">Review</a></td><td>Review a design with fresh agents across five stages.</td></tr>
     <tr valign="top"><td width="160" valign="top"><img src="skills/egm-review-loop/assets/icon.svg" width="20" height="20" alt="" align="top">&nbsp;<a href="skills/egm-review-loop/SKILL.md">Review&nbsp;loop</a></td><td>Run a configured group of reviewers for a specific review task.</td></tr>
+    <tr valign="top"><td width="160" valign="top"><img src="skills/egm-tickets/assets/icon.svg" width="20" height="20" alt="" align="top">&nbsp;<a href="skills/egm-tickets/SKILL.md">Tickets</a></td><td>Split an approved design into ordered, self-contained tickets.</td></tr>
     <tr valign="top"><td width="160" valign="top"><img src="skills/egm-drift-report/assets/icon.svg" width="20" height="20" alt="" align="top">&nbsp;<a href="skills/egm-drift-report/SKILL.md">Drift&nbsp;report</a></td><td>Compare checked-in documents with the current source code.</td></tr>
   </tbody>
 </table>

@@ -25,6 +25,7 @@
     "./.claude-plugin/agents/structural.md",
     "./.claude-plugin/agents/style.md",
     "./.claude-plugin/agents/synthesizer.md",
+    "./.claude-plugin/agents/ticket_readiness.md",
     "./.claude-plugin/agents/zoom_out.md"
   ]
 }
